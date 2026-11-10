@@ -12,12 +12,22 @@ OBJS = src/kernel/kernel.o
 all: $(ISO_NAME)
 
 $(ISO_NAME): build/kernel.elf
+	rm -rf iso_root
 	mkdir -p iso_root
-	cp build/kernel.elf iso_root/
+
+	cp build/kernel.elf iso_root/kernel.elf
 	cp limine.conf iso_root/
-	cp limine/limine-bios.sys iso_root/
-	cp limine/limine-uefi-cd.bin iso_root/
-	xorriso -as mkisofs -b limine-bios.sys -no-emul-boot -boot-load-size 4 -boot-info-table --efi-boot limine-uefi-cd.bin -efi-boot-part 1 -o $(ISO_NAME) iso_root
+	cp limine_bootloader/limine-bios.sys iso_root/
+	cp limine_bootloader/limine-bios-cd.bin iso_root/
+
+	xorriso -as mkisofs -R -r -J \
+		-b limine-bios-cd.bin \
+		-no-emul-boot \
+		-boot-load-size 4 \
+		-boot-info-table \
+		iso_root -o $(ISO_NAME)
+
+	limine_bootloader/limine bios-install $(ISO_NAME)
 
 build/kernel.elf: $(OBJS)
 	mkdir -p build

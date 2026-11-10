@@ -1,7 +1,14 @@
+OUTPUT_FORMAT(elf64-x86-64)
 ENTRY(kernel_main)
 
 SECTIONS
 {
+    /*
+     * O endereço da higher-half deve vir ANTES de qualquer seção
+     * para que todo o kernel seja mapeado na parte superior da memória.
+     */
+    . = 0xFFFFFFFF80000000;
+
     /*
      * Limine bootloader scans the .limine_requests section to fill responses.
      * This section MUST be kept in the final binary.
@@ -10,12 +17,6 @@ SECTIONS
     {
         KEEP(*(.limine_requests))
     }
-
-    /*
-     * The kernel is mapped in the higher half of the virtual address space.
-     * Standard address for x86_64 kernels.
-     */
-    . = 0xFFFFFFFF80000000;
 
     .text :
     {

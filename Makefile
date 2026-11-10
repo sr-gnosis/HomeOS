@@ -1,42 +1,27 @@
-# Build settings
-CC = x86_64-elf-gcc
-LD = x86_64-elf-ld
-ISO_NAME = homeos.iso
+.POSIX:
 
-CFLAGS = -ffreestanding -mcmodel=kernel -mno-red-zone -Wall -Wextra -std=gnu11
-LDFLAGS = -T linker.ld -nostdlib
+SHELL=/bin/sh
 
-# Objects
-OBJS = src/kernel/kernel.o
+CC=cc
+CFLAGS=-g -O2 -pipe -Wall -Wextra
+CPPFLAGS=-I. -I./limine_bootloader
+LDFLAGS=
+LIBS=
 
-all: $(ISO_NAME)
+# Alvo padrão: compila tanto o utilitário limine quanto o kernel
+.PHONY: all
+all: limine src/kernel/kernel.elf
 
-$(ISO_NAME): build/kernel.elf
-	rm -rf iso_root
-	mkdir -p iso_root
-
-	cp build/kernel.elf iso_root/kernel.elf
-	cp limine.conf iso_root/
-	cp limine_bootloader/limine-bios.sys iso_root/
-	cp limine_bootloader/limine-bios-cd.bin iso_root/
-
-	xorriso -as mkisofs -R -r -J \
-		-b limine-bios-cd.bin \
-		-no-emul-boot \
-		-boot-load-size 4 \
-		-boot-info-table \
-		iso_root -o $(ISO_NAME)
-
-	limine_bootloader/limine bios-install $(ISO_NAME)
-
-build/kernel.elf: $(OBJS)
-	mkdir -p build
-	$(LD) $(LDFLAGS) -o build/kernel.elf $(OBJS)
-
-src/kernel/kernel.o: src/kernel/kernel.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
+.PHONY: clean
 clean:
-	rm -rf build iso_root $(ISO_NAME) src/kernel/*.o
+	rm -f limine limine.exe src/kernel/kernel.elf
 
-.PHONY: all clean
+# Compila o utilitário limine na raiz
+limine: limine.c
+	$(CC) $(CFLAGS) -std=c99 -D_FILE_OFFSET_BITS=64 $(CPPFLAGS) $(LDFLAGS) limine.c $(LIBS) -o $@
+
+# Compila o kernel do HomeOS
+src/kernel/kernel.elf: src/kernel/kernel.c src/kernel/limine.h linker.ld
+	$(CC) $(CFLAGS) -ffreestanding -fno-stack-protector -fno-pie -no-pie \
+	-mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
+	-nostdlib -nostartfiles -T linker.ld src/kernel/kernel.c -o $@
